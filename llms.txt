@@ -1,0 +1,39 @@
+# Expo Universal Links & App Links Doctor — Expo/React Native deep-link verification
+
+> Free, client-side checker that finds why an Expo/React Native app's `https://` Universal Links (iOS) or App Links (Android) open a browser instead of the app — or work on only one platform — and gives the exact fix for `app.json`, `apple-app-site-association`, or `assetlinks.json`.
+
+Fill in your Apple Team ID / bundle identifier, `ios.associatedDomains` from `app.json`, the pasted response body of your `apple-app-site-association` file, your Android package name and signing certificate fingerprint(s), the pasted response body of `assetlinks.json`, your `intentFilters` entry, and which runtime you tested on — and it cross-checks them against what iOS and Android verification actually require. No account, no backend, nothing you type leaves your browser.
+
+## What it checks
+
+- iOS `associatedDomains`: missing the `applinks:` prefix, or wrongly including `https://` — both silently break Universal Links.
+- `apple-app-site-association`: reachable at exactly `/.well-known/apple-app-site-association` over HTTPS, not redirected (Apple's fetcher won't follow redirects), and `appID` matching `<Apple Team ID>.<bundle identifier>` exactly.
+- Android `intentFilters`: `"autoVerify": true` present, scheme is exactly `https`, `host` matching your real domain.
+- `assetlinks.json`: a JSON array (not a bare object), the `delegate_permission/common.handle_all_urls` relation, correct `package_name`, and `sha256_cert_fingerprints` matching the certificate the build is actually signed with (debug, EAS dev client, and Google Play App Signing release builds each use a different certificate).
+- Testing from Expo Go, where Universal Links / App Links can't work at all — it's a native-OS feature tied to the installed app's own bundle ID and signing key.
+
+## Who it's for
+
+Expo/React Native developers whose `https://` deep link opens the browser instead of the app on iOS, on Android, or on one platform while the other works fine.
+
+## How it works
+
+Static HTML plus one dependency-free JavaScript file, `doctor-universal-links.js`. All checks run in your browser against the values you type or paste in; the tool has no backend and makes no request that carries your configuration anywhere.
+
+## Privacy
+
+No account, no login, no cookies for the tool itself, no server-side processing of your config. The only analytics are anonymous usage counts (event name + count, never the content of what you entered) sent to a self-hosted Umami instance.
+
+## Links
+
+- Tool: https://arling.sk/expo-universal-links-doctor/
+- Full reference (worked example + FAQ): https://arling.sk/expo-universal-links-doctor/llms-full.txt
+- Source code: https://github.com/AndryRoby/expo-universal-links-doctor
+- Sibling tool, Supabase Auth deep links (web): https://arling.sk/supabase-redirect-doctor/
+- Sibling tool, Supabase Auth deep links (Flutter): https://arling.sk/flutter-supabase-doctor/
+- Sibling tool, Supabase Auth deep links (Expo): https://arling.sk/expo-supabase-auth-doctor/
+- Hub (more ARLing tools): https://arling.sk/
+
+## Contact
+
+Built by ARLing s. r. o. (Bratislava, Slovakia). andrej@arling.sk

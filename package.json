@@ -1,0 +1,12 @@
+{
+  "name": "expo-universal-links-doctor",
+  "version": "1.0.0",
+  "description": "Expo Universal Links & App Links Doctor — free, client-side diagnostic for iOS Universal Links / Android App Links that open the browser instead of the app.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests.mjs"
+  },
+  "license": "UNLICENSED",
+  "author": "ARLing s. r. o. <andrej@arling.sk>"
+}
