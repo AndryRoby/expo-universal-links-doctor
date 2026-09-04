@@ -1,144 +1,147 @@
 # Expo Universal Links & App Links Doctor
 
+Checks an Expo/React Native app's iOS Universal Links and Android App Links configuration and points at the exact reason a `https://` link opens a browser tab instead of the app.
+
 Live: https://arling.sk/expo-universal-links-doctor/
 
-A free, static, client-side tool that checks your Expo / React Native
-**iOS Universal Links** and **Android App Links** configuration — the
-`app.json`/`app.config` entries, the `apple-app-site-association` file,
-`assetlinks.json`, and the native manifests they produce — and points
-at the exact mismatch that's making `https://yourapp.com/...` open a
-browser tab instead of your app, instead of you re-reading Apple's and
-Android's verification docs side by side for the third time.
+## What it checks
 
-## What it's for
+The engine (`doctor-universal-links.js`) cross-checks `app.json`, the hosted `apple-app-site-association` (AASA) file, `assetlinks.json`, and your Android `intentFilters` against what iOS and Android verification actually require, and reports one problem code per mismatch:
 
-If tapping a `https://` link to your domain opens Safari/Chrome
-instead of your app — or it works on iOS but not Android, or the
-other way around, or it worked once and stopped after a rebuild —
-this tool takes the configuration that's normally split across
-`app.json`, a JSON file hosted on your own domain, and whatever the
-native build actually generated, and cross-checks it for the
-mismatches that cause almost all of these failures:
+**iOS: `associatedDomains` (app.json)**
+- `ios_associated_domains_empty`: no `applinks:` entry at all, so iOS never attempts Universal Links.
+- `ios_associated_domain_has_protocol`: entry includes `https://`, which silently breaks it.
+- `ios_associated_domain_has_path`: entry has a path after the domain; only `applinks:<domain>` is valid.
+- `ios_no_applinks_prefix`: none of the entries use the `applinks:` service type.
+- `ios_domain_mismatch`: the domain you said hosts the AASA file isn't in `associatedDomains`.
+- `ios_missing_bundle_id`, `ios_bundle_id_format`, `ios_missing_team_id`, `ios_team_id_format`: the bundle ID / 10-character Apple Team ID needed to compute the expected `appID`.
 
-- **iOS `associatedDomains`** missing the `applinks:` prefix, or
-  including the `https://` protocol by mistake — either one silently
-  breaks Universal Links even though the domain "looks" right
-  ([Expo: iOS Universal Links](https://docs.expo.dev/linking/ios-universal-links/)).
-- **`apple-app-site-association`** not reachable at exactly
-  `/.well-known/apple-app-site-association` over HTTPS, redirected
-  (Apple's fetcher does not follow redirects), or with an `appID` that
-  doesn't match `<Apple Team ID>.<bundle identifier>` byte-for-byte.
-- **Android `intentFilters`** missing `"autoVerify": true`, using a
-  scheme other than `https`, or a `host` that doesn't match your real
-  domain.
-- **`assetlinks.json`** not a JSON array, wrong `package_name`,
-  missing the `delegate_permission/common.handle_all_urls` relation,
-  or `sha256_cert_fingerprints` that don't match the certificate your
-  build is actually signed with — the single most common cause,
-  because the fingerprint for a local debug build, an EAS dev client,
-  and a **Google Play App Signing**-managed release build are three
-  different certificates, and only one of them will match what's on
-  the domain at a time
-  ([Android: Verify Android App Links](https://developer.android.com/training/app-links/verify-android-applinks)).
-- Configuration that only runs against the platform(s) you actually
-  fill in — so a Universal Links problem and an App Links problem
-  don't get mixed together in one report, and an incomplete iOS-only
-  or Android-only config isn't flagged for the platform you haven't
-  filled in yet.
-- Testing from **Expo Go**, where Universal Links / App Links can't
-  work at all since it's a native-OS feature tied to the installed
-  app's own bundle ID and signing key.
+**iOS: `apple-app-site-association`**
+- `aasa_missing`, `aasa_invalid_json`, `aasa_bom_present`: file not pasted in, doesn't parse, or starts with a UTF-8 BOM some parsers reject.
+- `aasa_missing_applinks_key`, `aasa_missing_details`, `aasa_missing_appid`: required `applinks.details[].appID`/`appIDs` structure absent.
+- `aasa_mixed_formats`: legacy (`appID`/`paths`) and modern (`appIDs`/`components`) shapes mixed in the same file.
+- `aasa_appid_format`, `aasa_appid_mismatch`: an `appID` isn't `<TeamID>.<BundleID>`, or none match your app.
+- `aasa_path_excluded`, `aasa_path_not_covered`: the path you tested is excluded, or not matched by any `paths`/`components` pattern (remember `*` doesn't cross a `/`).
+- `aasa_served_with_redirect`: the AASA URL responds with a 301/302; Apple's fetcher does not follow redirects.
+- `aasa_content_type_wrong`: served with a `Content-Type` other than `application/json`.
 
-## How it works (client-side only)
+**Android: `intentFilters` (app.json) and package identity**
+- `android_intent_filters_empty`: no intent-filter, so Android never attempts App Links verification.
+- `android_intent_autoverify_missing`: `autoVerify` isn't `true`.
+- `android_intent_scheme_not_https`, `android_intent_host_missing`: filter isn't `https`, or has no host.
+- `android_intent_path_not_covered`: `pathPrefix` is a literal-string prefix, not a wildcard, and doesn't cover the tested path.
+- `android_multiple_hosts_reminder`: multiple hosts declared; each needs its own hosted `assetlinks.json`.
+- `android_missing_package_name`, `android_package_name_format`: Android application ID missing or not reverse-DNS shaped.
 
-Everything runs in your browser. There is no backend, no account, and
-no payment wall. You fill in your app's Apple Team ID / bundle
-identifier, `ios.associatedDomains` from `app.json`, the pasted
-response body of your `apple-app-site-association` file, your Android
-package name and signing certificate fingerprint(s), the pasted
-response body of `assetlinks.json`, your `intentFilters` entry, and
-which runtime you tested on — and `doctor-universal-links.js`, one
-dependency-free JavaScript file, runs a single pure function,
-`diagnose(config)`, entirely in your browser, returning a
-plain-language report of what's wrong with copy-paste fixes for
-`app.json`, the AASA file, and `assetlinks.json`.
+**Android: `assetlinks.json` and signing fingerprints**
+- `assetlinks_missing`, `assetlinks_invalid_json`, `assetlinks_bom_present`: file not pasted in, doesn't parse, or has a BOM.
+- `assetlinks_not_array`, `assetlinks_empty_array`: must be a JSON *array* of statements, not a bare object, and not empty.
+- `assetlinks_relation_missing`: missing the exact `delegate_permission/common.handle_all_urls` relation string.
+- `assetlinks_namespace_wrong`, `assetlinks_package_mismatch`: `target.namespace` isn't `android_app`, or no entry's `package_name` matches yours.
+- `assetlinks_fingerprint_missing`: your `sha256Fingerprints` aren't listed in `sha256_cert_fingerprints`. The most common cause: a debug build, an EAS dev-client build, and a Google Play App Signing release build are three different certificates, and only one of them is usually pasted in.
+- `android_missing_fingerprints`, `android_fingerprint_format`, `android_fingerprint_lowercase`: fingerprint list empty, not 32-byte colon-separated hex, or lowercase (Google's tooling prints uppercase).
 
-Nothing about your configuration is sent anywhere. The only network
-activity this site generates is:
+**Cross-platform and runtime**
+- `runtime_expo_go`: Universal Links / App Links are a native-OS feature tied to the installed app's own bundle ID and signing key, so they can't work inside Expo Go at all.
+- `runtime_not_set`: which build type was tested isn't specified.
+- `linking_prefixes_empty`, `linking_prefix_missing_https_host`: React Navigation/expo-router `linking.prefixes` doesn't include the `https://` host, so in-app URL construction can drift from what the OS hands back.
+- `cross_platform_domain_mismatch`: iOS and Android are configured for different domains.
 
-- loading its own static assets (HTML/CSS/JS) from GitHub Pages,
-- and anonymous product-analytics events (page view, "run check"
-  clicked, etc.) sent to a self-hosted Umami instance — **event names
-  and counts only, never the content of what you entered.**
+Each problem carries a `severity` (`high`/`medium`/`low`), the config `path` it's about, and a `fix` where one applies; the report also returns ready-to-paste `expected` snippets for `app.json`, the AASA file, and `assetlinks.json`.
 
-You can verify this yourself: open your browser's network tab while
-using the tool, or just read `index.html` and `doctor-universal-links.js` — it's
-static files with no build step.
+## What it does not do
 
-## Privacy
+- It does not call Apple's or Google's live verification services, fetch your domain, or run `adb`/`swcutil` for you; it only reads the values and file contents you paste in.
+- It does not inspect your actual signed build, your EAS credentials, or your App Store/Play Console listing.
+- It is a config linter, not a live tester: a clean report is not a guarantee that a real device will verify the link.
+- It sends nothing you type or paste anywhere. No account, no login, no payment wall.
 
-- No account, no login, no cookies for the tool itself.
-- No server-side processing of your config — the "backend" is your own
-  browser's JavaScript engine.
-- Analytics (Umami) records that *a* check ran, not *what* you checked.
-- If you're paranoid (fair, given how many secrets end up pasted into
-  config debuggers), download the repo and open `index.html` locally
-  with your network disconnected — it still works fully, since every
-  field is something you paste in yourself; the tool never fetches
-  anything from your domain.
+## How it works
 
-## Running it locally
+Fill in your Apple Team ID / bundle identifier and `ios.associatedDomains`, the pasted response body of `apple-app-site-association`, your Android package name and signing fingerprint(s), the pasted response body of `assetlinks.json`, your `intentFilters`, and which runtime you tested on. The page calls one pure, dependency-free function, `diagnose(config)`, from `doctor-universal-links.js` (also published as `window.UniversalLinksDoctor.diagnose`), entirely in your browser; nothing is sent over the network. Real input and output, run with `node`:
 
-There's no build step. It's static files.
+```js
+import { diagnose } from './doctor-universal-links.js';
+
+diagnose({
+  ios: {
+    bundleId: 'com.example.myapp', teamId: 'ABCDE12345',
+    associatedDomains: ['applinks:myapp.com'],
+    aasaJson: '{"applinks":{"details":[{"appID":"ABCDE12345.com.example.myapp","paths":["*"]}]}}',
+  },
+  android: {
+    packageName: 'com.example.myapp',
+    sha256Fingerprints: ['77:7E:85:8C:93:9A:A1:A8:AF:B6:BD:C4:CB:D2:D9:E0:E7:EE:F5:FC:03:0A:11:18:1F:26:2D:34:3B:42:49:50'],
+    assetlinksJson: '[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"com.example.myapp","sha256_cert_fingerprints":["3A:2B:9C:14:6D:E9:33:0E:2E:88:BE:4C:71:60:6D:2F:2A:20:D5:76:73:1C:A1:00:88:6A:B1:0A:22:1C:80:4F"]}}]',
+    intentFilters: [{ autoVerify: true, scheme: 'https', host: 'myapp.com', pathPrefix: '/' }],
+  },
+  runtime: 'standalone',
+});
+```
+
+```json
+{
+  "status": "fail",
+  "summary": "1 blocking mismatch found. Most urgent: Fingerprint \"77:7E:85:...:49:50\" from android.sha256Fingerprints is not listed in assetlinks.json's sha256_cert_fingerprints. This is the single most common App Links failure: an EAS build is signed with a different keystore than the fingerprint that's actually hosted.",
+  "problems": [
+    {
+      "severity": "high",
+      "code": "assetlinks_fingerprint_missing",
+      "message": "Fingerprint \"77:7E:85:...:49:50\" from android.sha256Fingerprints is not listed in assetlinks.json's sha256_cert_fingerprints.",
+      "path": "android.assetlinksJson",
+      "fix": "Add the missing fingerprint(s) to sha256_cert_fingerprints, or re-check which build profile / keystore you copied the fingerprint from."
+    }
+  ]
+}
+```
+
+iOS is fully correct in this example: only the Android fingerprint is flagged, because the debug/EAS fingerprint in `sha256Fingerprints` isn't the one hosted in `assetlinks.json`.
+
+## Run locally
+
+No build step, no dependencies.
 
 ```bash
 git clone https://github.com/AndryRoby/expo-universal-links-doctor.git
 cd expo-universal-links-doctor
-# any static file server works, e.g.:
-npx serve .
+python -m http.server
 # or just open index.html directly in a browser
 ```
 
-## Reporting a missing case / false positive
+## Tests
 
-Found an Expo Universal Links / App Links failure mode this tool
-doesn't catch, or a check that flags something that's actually fine?
-Please open an issue on the GitHub repo with:
+```bash
+node tests.mjs
+```
 
-1. The relevant (redacted) config — `associatedDomains`,
-   `intentFilters`, the AASA/`assetlinks.json` content, Expo SDK
-   version.
-2. What actually happened at runtime (the link opened a browser,
-   nothing happened, it worked on one platform only, etc.) and on
-   which platform/build type (Expo Go, dev client, EAS build,
-   TestFlight/Play Store).
-3. What you expected the tool to say.
+106 assertions, all passing as of this writing. Each scenario mutates one field of a known-good baseline config to isolate exactly one problem code at a time.
 
-Redact anything sensitive (real domains, signing fingerprints, bundle
-IDs you don't want public) before posting — issues are public.
+## Privacy
 
-## Disclaimer
+Everything runs client-side in your browser; no config you type or paste is ever sent anywhere. Anonymous product analytics (page views, "run check" clicked) go to a self-hosted Umami instance with no cookies and no personal data: event names and counts only, never the content of what you entered. The optional "tell me when a new tool lands" email signup is voluntary and used for nothing else; see https://arling.sk/privacy/ for the full policy.
 
-This tool is provided **as is**, with no warranty of any kind. It
-checks for known, common misconfiguration patterns — it cannot
-guarantee your Universal Links or App Links will verify or open
-correctly, and a clean report is not a guarantee of a working
-integration. It performs a read-only, client-side analysis of the
-values you type or paste in; nothing is verified against Apple's or
-Google's live verification services, your App Store/Play Console
-listing, or your actual signed build.
-Apple, Google, and Expo are not affiliated with this tool, and their
-platforms, consoles, and docs may change in ways that make individual
-checks stale over time. Always verify against the current official
-documentation for anything security- or release-relevant.
+## Sources
 
-## About
+The rules implemented here come from, and are cross-checked against:
 
-Built by ARLing s. r. o. (Bratislava, Slovakia).
-Contact: andrej@arling.sk
+- [Expo: iOS Universal Links](https://docs.expo.dev/linking/ios-universal-links/)
+- [Expo: Android App Links](https://docs.expo.dev/linking/android-app-links/)
+- [Expo: Linking overview](https://docs.expo.dev/linking/overview/) (Expo Go limitations)
+- [Apple: Supporting associated domains](https://developer.apple.com/documentation/xcode/supporting-associated-domains)
+- [Apple TN3155: Debugging Universal Links](https://developer.apple.com/documentation/technotes/tn3155-debugging-universal-links)
+- [Android: Verify Android App Links](https://developer.android.com/training/app-links/verify-android-applinks)
+- [Stack Overflow #71399617: sha256_cert_fingerprints for assetlinks.json in Expo](https://stackoverflow.com/questions/71399617/how-to-get-sha256-cert-fingerprints-for-assetlinks-json-for-expo)
 
-Sibling tools in the same "Doctor" family:
-- Supabase Auth deep links, web (Next.js/Vite/SvelteKit): https://arling.sk/supabase-redirect-doctor/
-- Supabase Auth deep links, Flutter (supabase_flutter): https://arling.sk/flutter-supabase-doctor/
-- Supabase Auth deep links, Expo/React Native: https://arling.sk/expo-supabase-auth-doctor/
-- More ARLing tools: https://arling.sk/
+## Report a problem
+
+Found a failure mode this tool doesn't catch, or a check that flags something that's actually fine? Open an issue: https://github.com/AndryRoby/expo-universal-links-doctor/issues, or write to andrej@arling.sk. Include the relevant (redacted) config, what actually happened at runtime and on which build type, and what you expected the tool to say.
+
+## License
+
+All rights reserved, see [LICENSE-NOTICE.md](LICENSE-NOTICE.md). Reading the code and learning from it is fine; deploying your own copy of it as a product is not.
+
+---
+
+ARLing s. r. o., Bratislava, Slovakia. andrej@arling.sk
+
+Hub and sibling tools: https://arling.sk/ · https://arling.sk/google-oauth-redirect-doctor/ · https://arling.sk/expo-supabase-auth-doctor/ · https://arling.sk/supabase-redirect-doctor/ · https://arling.sk/flutter-supabase-doctor/ · https://arling.sk/sepa-pain001-doctor/ · https://arling.sk/bookapp/
