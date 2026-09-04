@@ -1,4 +1,4 @@
-// doctor-universal-links.js — Expo Universal Links & App Links Doctor core logic.
+// doctor-universal-links.js: Expo Universal Links & App Links Doctor core logic.
 //
 // Pure, deterministic, 100% client-side: given an Expo/React Native app's
 // iOS Universal Links config (associatedDomains, the apple-app-site-association
@@ -12,7 +12,7 @@
 //
 // This is the fourth sibling in the "Doctor" family (same diagnose() shape,
 // same "nothing leaves your browser" contract as doctor-web.js / doctor.js /
-// doctor-flutter.js) — a different domain (native iOS/Android link
+// doctor-flutter.js): a different domain (native iOS/Android link
 // verification instead of Supabase Auth redirects), so nothing is imported
 // or copied from those files.
 //
@@ -20,14 +20,14 @@
 //
 //  - https://docs.expo.dev/linking/ios-universal-links/
 //      app.json → expo.ios.associatedDomains entries use the form
-//      "applinks:example.com" — no "https://" prefix, no path ("This is a
+//      "applinks:example.com": no "https://" prefix, no path ("This is a
 //      common mistake that will result in the universal links not
 //      working."); the AASA file must be hosted at
 //      /.well-known/apple-app-site-association and served over https.
 //  - https://docs.expo.dev/linking/android-app-links/
 //      app.json → expo.android.intentFilters entries need
 //      { action: "VIEW", autoVerify: true, data: [{ scheme, host, pathPrefix }],
-//      category: ["BROWSABLE","DEFAULT"] } — "Specifying autoVerify is
+//      category: ["BROWSABLE","DEFAULT"] }: "Specifying autoVerify is
 //      required for Android App Links to work correctly"; assetlinks.json is
 //      hosted at /.well-known/assetlinks.json; the SHA256 fingerprint for an
 //      EAS build comes from `eas credentials -p android` → "SHA256
@@ -36,7 +36,7 @@
 //      verified-in-theory config that still fails on-device).
 //  - https://docs.expo.dev/linking/overview/
 //      "Support for incoming links in Expo Go is limited. We recommend using
-//      Development builds to test your app's linking strategies." — Universal
+//      Development builds to test your app's linking strategies.": Universal
 //      Links / App Links verification is a native OS feature tied to the
 //      installed app's bundle ID / signing key, so it does not work in the
 //      Expo Go sandbox app at all; it needs a development build, or a
@@ -51,11 +51,10 @@
 //      https://<domain>/.well-known/apple-app-site-association, "using
 //      https:// with a valid certificate and with no redirects."
 //  - https://developer.apple.com/documentation/technotes/tn3155-debugging-universal-links
-//      No redirects: a 301/302 on the AASA URL is explicitly unsupported —
-//      "host your AASA at each domain and subdomain included in your
+//      No redirects: a 301/302 on the AASA URL is explicitly unsupported: //      "host your AASA at each domain and subdomain included in your
 //      applinks" instead of redirecting one domain to another. The `*`
 //      wildcard in "paths" / the components "/" pattern does not match "/"
-//      or "." — i.e. it matches within one path segment, not across it.
+//      or ".": i.e. it matches within one path segment, not across it.
 //      Apple's CDN fetches and caches the AASA file per-device at install
 //      time, so an edit doesn't take effect for an already-installed app
 //      until the OS re-checks it (a fresh install/reinstall is the reliable
@@ -134,7 +133,7 @@ function parseJsonSafe(text) {
 // "*" matches a run of characters but never crosses a "/" or "." separator.
 // Legacy "paths" entries may be prefixed "NOT " to exclude a pattern; modern
 // "components" entries carry an "exclude": true flag instead. Both are
-// evaluated in array order — the first pattern that matches wins.
+// evaluated in array order: the first pattern that matches wins.
 
 function escapeRegexChar(c) {
   return c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -192,7 +191,7 @@ function checkPathCoverage(detail, testedPath) {
     return { covered: false, excluded: false, implicit: false };
   }
 
-  // Neither key present on this detail entry at all — nothing restricts it,
+  // Neither key present on this detail entry at all: nothing restricts it,
   // so treat the app ID as unrestricted rather than falsely flagging it.
   return { covered: true, excluded: false, implicit: true };
 }
@@ -344,7 +343,7 @@ export function diagnose(config) {
       problems,
       'high',
       'runtime_expo_go',
-      'Universal Links (iOS) and Android App Links are verified against the installed app\'s bundle ID / signing key — a native-OS feature Expo Go can\'t provide since it is itself the installed app. Per Expo\'s own linking docs, "support for incoming links in Expo Go is limited." Tapping the link will just open it in the browser no matter how correct your config is.',
+      'Universal Links (iOS) and Android App Links are verified against the installed app\'s bundle ID / signing key: a native-OS feature Expo Go can\'t provide since it is itself the installed app. Per Expo\'s own linking docs, "support for incoming links in Expo Go is limited." Tapping the link will just open it in the browser no matter how correct your config is.',
       'runtime',
       'expo-go',
       'Test with a development build (npx expo run:ios / npx expo run:android, or an EAS dev-client build) or a standalone/production build.'
@@ -354,7 +353,7 @@ export function diagnose(config) {
       problems,
       'low',
       'runtime_not_set',
-      'runtime is not set. Universal Links / App Links only work in a development, standalone, or production build — not Expo Go — so it\'s worth confirming explicitly which one you tested on before trusting a "still doesn\'t work" result.',
+      'runtime is not set. Universal Links / App Links only work in a development, standalone, or production build: not Expo Go: so it\'s worth confirming explicitly which one you tested on before trusting a "still doesn\'t work" result.',
       'runtime'
     );
   }
@@ -362,14 +361,14 @@ export function diagnose(config) {
   // ── 1. iOS: bundle ID / team ID ──────────────────────────────────────
   if (usesIos) {
     if (!bundleId) {
-      pushProblem(problems, 'high', 'ios_missing_bundle_id', 'ios.bundleId is empty — the Apple App ID (TEAMID.bundleID) used inside the apple-app-site-association file can\'t be computed or verified without it.', 'ios.bundleId');
+      pushProblem(problems, 'high', 'ios_missing_bundle_id', 'ios.bundleId is empty: the Apple App ID (TEAMID.bundleID) used inside the apple-app-site-association file can\'t be computed or verified without it.', 'ios.bundleId');
     } else if (!/^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/.test(bundleId)) {
       pushProblem(problems, 'medium', 'ios_bundle_id_format', `"${bundleId}" doesn't look like a reverse-DNS bundle identifier (e.g. "com.example.myapp").`, 'ios.bundleId', bundleId);
     }
     if (!teamId) {
-      pushProblem(problems, 'high', 'ios_missing_team_id', 'ios.teamId is empty. Apple App IDs in the apple-app-site-association file are "<Apple Team ID>.<Bundle Identifier>" — without the 10-character Team ID, the appID entry can\'t be validated.', 'ios.teamId');
+      pushProblem(problems, 'high', 'ios_missing_team_id', 'ios.teamId is empty. Apple App IDs in the apple-app-site-association file are "<Apple Team ID>.<Bundle Identifier>": without the 10-character Team ID, the appID entry can\'t be validated.', 'ios.teamId');
     } else if (!/^[A-Z0-9]{10}$/.test(teamId)) {
-      pushProblem(problems, 'medium', 'ios_team_id_format', `"${teamId}" doesn't look like an Apple Team ID — it's normally exactly 10 uppercase letters/digits (found under Apple Developer → Membership).`, 'ios.teamId', teamId);
+      pushProblem(problems, 'medium', 'ios_team_id_format', `"${teamId}" doesn't look like an Apple Team ID: it's normally exactly 10 uppercase letters/digits (found under Apple Developer → Membership).`, 'ios.teamId', teamId);
     }
   }
 
@@ -380,7 +379,7 @@ export function diagnose(config) {
         problems,
         'high',
         'ios_associated_domains_empty',
-        'ios.associatedDomains is empty. Without an "applinks:<domain>" entry in app.json, iOS never attempts Universal Links for this app at all — the OS has nothing telling it which domain to associate.',
+        'ios.associatedDomains is empty. Without an "applinks:<domain>" entry in app.json, iOS never attempts Universal Links for this app at all: the OS has nothing telling it which domain to associate.',
         'ios.associatedDomains'
       );
       fixes.push({ title: 'Add associatedDomains to app.json', value: buildAppJsonIosSnippet(domain), where: 'app.json → expo.ios.associatedDomains' });
@@ -394,7 +393,7 @@ export function diagnose(config) {
             problems,
             'high',
             'ios_associated_domain_has_protocol',
-            `ios.associatedDomains[${i}] is "${trimmed}" — it must not include the protocol. Per Expo's docs this is "a common mistake that will result in the universal links not working." Use "applinks:${normalizeDomain(trimmed)}" instead.`,
+            `ios.associatedDomains[${i}] is "${trimmed}": it must not include the protocol. Per Expo's docs this is "a common mistake that will result in the universal links not working." Use "applinks:${normalizeDomain(trimmed)}" instead.`,
             `ios.associatedDomains[${i}]`,
             trimmed,
             `applinks:${normalizeDomain(trimmed)}`
@@ -404,7 +403,7 @@ export function diagnose(config) {
             problems,
             'high',
             'ios_associated_domain_has_path',
-            `ios.associatedDomains[${i}] is "${trimmed}" — it must be just "applinks:<domain>", with no path after the domain.`,
+            `ios.associatedDomains[${i}] is "${trimmed}": it must be just "applinks:<domain>", with no path after the domain.`,
             `ios.associatedDomains[${i}]`,
             trimmed,
             `applinks:${trimmed.replace(/^applinks:/i, '').split('/')[0]}`
@@ -425,7 +424,7 @@ export function diagnose(config) {
           problems,
           'high',
           'ios_no_applinks_prefix',
-          'None of ios.associatedDomains starts with "applinks:" — only that service type enables Universal Links (webcredentials/activitycontinuation/appclips cover different features).',
+          'None of ios.associatedDomains starts with "applinks:": only that service type enables Universal Links (webcredentials/activitycontinuation/appclips cover different features).',
           'ios.associatedDomains'
         );
       }
@@ -434,7 +433,7 @@ export function diagnose(config) {
           problems,
           'medium',
           'ios_domain_mismatch',
-          `ios.domain ("${ios.domain}") — where you said the apple-app-site-association file is hosted — doesn't match any "applinks:" host in ios.associatedDomains. iOS only fetches the AASA from a domain it's told about via associatedDomains.`,
+          `ios.domain ("${ios.domain}"): where you said the apple-app-site-association file is hosted: doesn't match any "applinks:" host in ios.associatedDomains. iOS only fetches the AASA from a domain it's told about via associatedDomains.`,
           'ios.domain',
           ios.domain
         );
@@ -460,7 +459,7 @@ export function diagnose(config) {
         problems,
         'medium',
         'aasa_bom_present',
-        'The apple-app-site-association content starts with a UTF-8 byte-order-mark (BOM). Some strict JSON/CDN parsers reject a file that starts with a BOM instead of "{" — re-save the file as UTF-8 without a BOM.',
+        'The apple-app-site-association content starts with a UTF-8 byte-order-mark (BOM). Some strict JSON/CDN parsers reject a file that starts with a BOM instead of "{": re-save the file as UTF-8 without a BOM.',
         'ios.aasaJson'
       );
     }
@@ -482,7 +481,7 @@ export function diagnose(config) {
       } else {
         const details = Array.isArray(applinks.details) ? applinks.details : null;
         if (!details || !details.length) {
-          pushProblem(problems, 'high', 'aasa_missing_details', 'applinks.details is missing or empty — there is no appID entry at all for iOS to match against.', 'ios.aasaJson');
+          pushProblem(problems, 'high', 'aasa_missing_details', 'applinks.details is missing or empty: there is no appID entry at all for iOS to match against.', 'ios.aasaJson');
           fixes.push({ title: 'Fix apple-app-site-association', value: expected.aasaSnippet, where: `https://${domain || '<your-domain>'}/.well-known/apple-app-site-association` });
         } else {
           const hasLegacy = details.some((d) => d && typeof d === 'object' && ('appID' in d || 'paths' in d));
@@ -519,7 +518,7 @@ export function diagnose(config) {
               problems,
               'high',
               'aasa_appid_mismatch',
-              `None of the appID/appIDs entries in apple-app-site-association equal "${expectedAppId}" (from ios.teamId + ios.bundleId). iOS requires an exact match — the app simply won't be offered the link.`,
+              `None of the appID/appIDs entries in apple-app-site-association equal "${expectedAppId}" (from ios.teamId + ios.bundleId). iOS requires an exact match: the app simply won't be offered the link.`,
               'ios.aasaJson',
               expectedAppId,
               `Add "${expectedAppId}" as an appID (or into appIDs) in the hosted apple-app-site-association file.`
@@ -541,7 +540,7 @@ export function diagnose(config) {
                 problems,
                 'high',
                 'aasa_path_not_covered',
-                `"${testedPath}" isn't covered by any "paths" / "components" pattern in the matching details entry. Remember "*" doesn't cross a "/" or "." — "/product/*" matches "/product/42" but not "/product/42/reviews".`,
+                `"${testedPath}" isn't covered by any "paths" / "components" pattern in the matching details entry. Remember "*" doesn't cross a "/" or ".": "/product/*" matches "/product/42" but not "/product/42/reviews".`,
                 'ios.aasaJson',
                 testedPath,
                 `Add a pattern that covers "${testedPath}" (e.g. "${testedPath.split('/').slice(0, 2).join('/')}/*").`
@@ -559,10 +558,10 @@ export function diagnose(config) {
       problems,
       'high',
       'aasa_served_with_redirect',
-      'The apple-app-site-association URL responds with a redirect (301/302). Apple\'s own debugging guide is explicit that this is unsupported: "HTTP redirect, which is not supported when hosting the AASA file" — host the real file at each domain/subdomain instead of redirecting one to another.',
+      'The apple-app-site-association URL responds with a redirect (301/302). Apple\'s own debugging guide is explicit that this is unsupported: "HTTP redirect, which is not supported when hosting the AASA file": host the real file at each domain/subdomain instead of redirecting one to another.',
       'ios.aasaServedWithRedirect',
       undefined,
-      `Serve the file directly (HTTP 200) at https://${domain || '<your-domain>'}/.well-known/apple-app-site-association — no redirect, even a same-site one.`
+      `Serve the file directly (HTTP 200) at https://${domain || '<your-domain>'}/.well-known/apple-app-site-association: no redirect, even a same-site one.`
     );
   }
 
@@ -572,7 +571,7 @@ export function diagnose(config) {
       problems,
       'medium',
       'aasa_content_type_wrong',
-      `apple-app-site-association is served with Content-Type "${contentType}" instead of "application/json". Most servers work either way, but some CDNs and Apple's own crawler are pickier — serve it as JSON to be safe.`,
+      `apple-app-site-association is served with Content-Type "${contentType}" instead of "application/json". Most servers work either way, but some CDNs and Apple's own crawler are pickier: serve it as JSON to be safe.`,
       'ios.aasaContentType',
       contentType,
       'Set Content-Type: application/json on the .well-known/apple-app-site-association response.'
@@ -580,14 +579,14 @@ export function diagnose(config) {
   }
 
   if (usesIos) {
-    checklist.push(`Verify hosting: curl -I https://${domain || '<your-domain>'}/.well-known/apple-app-site-association — expect HTTP 200, no redirect, Content-Type: application/json.`);
-    checklist.push("Apple's CDN fetches and caches the AASA per device at install time — after changing it, reinstall the app (or wait) rather than assuming an edit takes effect instantly.");
+    checklist.push(`Verify hosting: curl -I https://${domain || '<your-domain>'}/.well-known/apple-app-site-association: expect HTTP 200, no redirect, Content-Type: application/json.`);
+    checklist.push("Apple's CDN fetches and caches the AASA per device at install time: after changing it, reinstall the app (or wait) rather than assuming an edit takes effect instantly.");
   }
 
   // ── 4. Android: package name ─────────────────────────────────────────
   if (usesAndroid) {
     if (!packageName) {
-      pushProblem(problems, 'high', 'android_missing_package_name', 'android.packageName is empty — assetlinks.json and the intent-filter can\'t be verified against it.', 'android.packageName');
+      pushProblem(problems, 'high', 'android_missing_package_name', 'android.packageName is empty: assetlinks.json and the intent-filter can\'t be verified against it.', 'android.packageName');
     } else if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(packageName)) {
       pushProblem(problems, 'medium', 'android_package_name_format', `"${packageName}" doesn't look like a valid Android application ID (e.g. "com.example.myapp").`, 'android.packageName', packageName);
     }
@@ -600,7 +599,7 @@ export function diagnose(config) {
       problems,
       'medium',
       'android_missing_fingerprints',
-      'android.sha256Fingerprints is empty. Get it with `eas credentials -p android` (select your build profile → "SHA256 Fingerprint") — a local debug keystore\'s fingerprint is different from an EAS build\'s and won\'t verify.',
+      'android.sha256Fingerprints is empty. Get it with `eas credentials -p android` (select your build profile → "SHA256 Fingerprint"): a local debug keystore\'s fingerprint is different from an EAS build\'s and won\'t verify.',
       'android.sha256Fingerprints'
     );
   }
@@ -626,7 +625,7 @@ export function diagnose(config) {
   } else if (assetlinksRaw.trim()) {
     const parsed = parseJsonSafe(assetlinksRaw);
     if (parsed.bom) {
-      pushProblem(problems, 'medium', 'assetlinks_bom_present', 'assetlinks.json starts with a UTF-8 byte-order-mark (BOM) — re-save it as UTF-8 without a BOM.', 'android.assetlinksJson');
+      pushProblem(problems, 'medium', 'assetlinks_bom_present', 'assetlinks.json starts with a UTF-8 byte-order-mark (BOM): re-save it as UTF-8 without a BOM.', 'android.assetlinksJson');
     }
     if (!parsed.ok) {
       pushProblem(problems, 'high', 'assetlinks_invalid_json', `assetlinks.json isn't valid JSON${parsed.error ? ` (${parsed.error})` : ''}.`, 'android.assetlinksJson');
@@ -635,14 +634,14 @@ export function diagnose(config) {
         problems,
         'high',
         'assetlinks_not_array',
-        'assetlinks.json must be a JSON *array* of statement objects, even for a single app — a bare object at the top level (`{...}` instead of `[{...}]`) fails Android\'s Digital Asset Links verification.',
+        'assetlinks.json must be a JSON *array* of statement objects, even for a single app: a bare object at the top level (`{...}` instead of `[{...}]`) fails Android\'s Digital Asset Links verification.',
         'android.assetlinksJson',
         undefined,
         'Wrap the object in [ ] so it is a one-element array.'
       );
       fixes.push({ title: 'Fix assetlinks.json', value: expected.assetlinksSnippet, where: `https://${domain || '<your-domain>'}/.well-known/assetlinks.json` });
     } else if (!parsed.value.length) {
-      pushProblem(problems, 'high', 'assetlinks_empty_array', 'assetlinks.json is an empty array — there is no statement granting your app permission to handle links for this domain.', 'android.assetlinksJson');
+      pushProblem(problems, 'high', 'assetlinks_empty_array', 'assetlinks.json is an empty array: there is no statement granting your app permission to handle links for this domain.', 'android.assetlinksJson');
       fixes.push({ title: 'Fix assetlinks.json', value: expected.assetlinksSnippet, where: `https://${domain || '<your-domain>'}/.well-known/assetlinks.json` });
     } else {
       let matchingEntry = null;
@@ -658,14 +657,14 @@ export function diagnose(config) {
             problems,
             'high',
             'assetlinks_relation_missing',
-            `assetlinks.json[${i}].relation doesn't include "delegate_permission/common.handle_all_urls" — Android's verifier requires this exact string to grant the app link permission.`,
+            `assetlinks.json[${i}].relation doesn't include "delegate_permission/common.handle_all_urls": Android's verifier requires this exact string to grant the app link permission.`,
             `android.assetlinksJson[${i}].relation`
           );
         }
         const target = safeObj(entry.target);
         if (target.namespace === 'android_app') anyNamespaceOk = true;
         else {
-          pushProblem(problems, 'high', 'assetlinks_namespace_wrong', `assetlinks.json[${i}].target.namespace is "${target.namespace || '(missing)'}" — it must be exactly "android_app".`, `android.assetlinksJson[${i}].target.namespace`, target.namespace);
+          pushProblem(problems, 'high', 'assetlinks_namespace_wrong', `assetlinks.json[${i}].target.namespace is "${target.namespace || '(missing)'}": it must be exactly "android_app".`, `android.assetlinksJson[${i}].target.namespace`, target.namespace);
         }
         if (packageName && target.package_name === packageName && hasRelation && target.namespace === 'android_app') {
           matchingEntry = target;
@@ -678,7 +677,7 @@ export function diagnose(config) {
           'high',
           'assetlinks_package_mismatch',
           anyPackage
-            ? `assetlinks.json has an entry for "${packageName}" but it's missing the relation or namespace fields above — fix those first.`
+            ? `assetlinks.json has an entry for "${packageName}" but it's missing the relation or namespace fields above: fix those first.`
             : `No entry in assetlinks.json has target.package_name === "${packageName}". Android will not verify the app for this domain.`,
           'android.assetlinksJson',
           packageName
@@ -705,7 +704,7 @@ export function diagnose(config) {
     }
   }
   if (usesAndroid) {
-    checklist.push(`Check on-device verification: adb shell pm get-app-links ${packageName || '<package>'} — look for "verified" under Domain verification state.`);
+    checklist.push(`Check on-device verification: adb shell pm get-app-links ${packageName || '<package>'}: look for "verified" under Domain verification state.`);
   }
 
   // ── 7. Android: intentFilters ────────────────────────────────────────
@@ -730,7 +729,7 @@ export function diagnose(config) {
           problems,
           'high',
           'android_intent_autoverify_missing',
-          `android.intentFilters[${i}].autoVerify is ${JSON.stringify(f.autoVerify)}, not true. Per Expo's docs, "Specifying autoVerify is required for Android App Links to work correctly" — without it, Android opens the link as an ordinary (non-verified) filter and the browser disambiguation dialog wins.`,
+          `android.intentFilters[${i}].autoVerify is ${JSON.stringify(f.autoVerify)}, not true. Per Expo's docs, "Specifying autoVerify is required for Android App Links to work correctly": without it, Android opens the link as an ordinary (non-verified) filter and the browser disambiguation dialog wins.`,
           `android.intentFilters[${i}].autoVerify`,
           f.autoVerify,
           'Set autoVerify: true.'
@@ -741,13 +740,13 @@ export function diagnose(config) {
           problems,
           'high',
           'android_intent_scheme_not_https',
-          `android.intentFilters[${i}].scheme is "${scheme || '(empty)'}" — Android App Links (as opposed to a custom-scheme deep link) require "https".`,
+          `android.intentFilters[${i}].scheme is "${scheme || '(empty)'}": Android App Links (as opposed to a custom-scheme deep link) require "https".`,
           `android.intentFilters[${i}].scheme`,
           scheme
         );
       }
       if (!host) {
-        pushProblem(problems, 'high', 'android_intent_host_missing', `android.intentFilters[${i}].host is empty — Android has no domain to verify against Digital Asset Links.`, `android.intentFilters[${i}].host`);
+        pushProblem(problems, 'high', 'android_intent_host_missing', `android.intentFilters[${i}].host is empty: Android has no domain to verify against Digital Asset Links.`, `android.intentFilters[${i}].host`);
       }
       if (testedPath && pathPrefix && !testedPath.startsWith(pathPrefix)) {
         pushProblem(
@@ -767,7 +766,7 @@ export function diagnose(config) {
         problems,
         'medium',
         'android_multiple_hosts_reminder',
-        `android.intentFilters declares ${hosts.size} different hosts (${Array.from(hosts).join(', ')}). Each one needs its own assetlinks.json hosted at that exact domain's /.well-known/ — this checker only validated the single assetlinks.json you pasted.`,
+        `android.intentFilters declares ${hosts.size} different hosts (${Array.from(hosts).join(', ')}). Each one needs its own assetlinks.json hosted at that exact domain's /.well-known/: this checker only validated the single assetlinks.json you pasted.`,
         'android.intentFilters'
       );
     }
@@ -780,7 +779,7 @@ export function diagnose(config) {
         problems,
         'low',
         'linking_prefixes_empty',
-        'linking.prefixes is empty. React Navigation / expo-router use this list to build in-app URLs from a Linking.createURL-style config — without the https host here too, links you construct inside the app itself may not match what the OS hands back.',
+        'linking.prefixes is empty. React Navigation / expo-router use this list to build in-app URLs from a Linking.createURL-style config: without the https host here too, links you construct inside the app itself may not match what the OS hands back.',
         'linking.prefixes'
       );
     } else if (domain && !prefixes.some((p) => p.trim().toLowerCase().startsWith(`https://${domain}`))) {
@@ -798,7 +797,7 @@ export function diagnose(config) {
 
   // ── 9. expo-router route existence (informational only) ─────────────
   if (linking.usesExpoRouter === true && testedPath) {
-    checklist.push(`Confirm "${testedPath}" matches an actual file-based route under your Expo Router app/ directory — this checker can't see your file system.`);
+    checklist.push(`Confirm "${testedPath}" matches an actual file-based route under your Expo Router app/ directory: this checker can't see your file system.`);
   }
 
   // ── 10. cross-platform host consistency (informational) ─────────────
@@ -816,7 +815,7 @@ export function diagnose(config) {
   }
 
   checklist.push("Validate the AASA independently of app behavior: on a Mac, `swcutil dl -d <domain>` downloads what Apple's CDN sees; `swcutil verify -d <domain> -j <file> -u <url>` checks a specific URL against it.");
-  checklist.push('Re-run this check after every change — app.json, the hosted .well-known files, and your EAS signing credentials drift independently of each other.');
+  checklist.push('Re-run this check after every change: app.json, the hosted .well-known files, and your EAS signing credentials drift independently of each other.');
 
   const sorted = sortProblems(problems);
   const highCount = sorted.filter((p) => p.severity === 'high').length;
@@ -846,7 +845,7 @@ export function diagnose(config) {
     fixes,
     checklist,
     disclaimer:
-      "Read-only, client-side analysis of the values and files you pasted in. Nothing is verified against your live domain, app.json, or EAS credentials — always confirm with curl -I, adb shell pm get-app-links, and a real device before shipping.",
+      "Read-only, client-side analysis of the values and files you pasted in. Nothing is verified against your live domain, app.json, or EAS credentials: always confirm with curl -I, adb shell pm get-app-links, and a real device before shipping.",
   };
 }
 
