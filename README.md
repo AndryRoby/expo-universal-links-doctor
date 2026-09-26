@@ -134,7 +134,7 @@ The rules implemented here come from, and are cross-checked against:
 
 ## Report a problem
 
-Found a failure mode this tool doesn't catch, or a check that flags something that's actually fine? Open an issue: https://github.com/AndryRoby/expo-universal-links-doctor/issues, or write to andrej@arling.sk. Include the relevant (redacted) config, what actually happened at runtime and on which build type, and what you expected the tool to say.
+Found a failure mode this tool doesn't catch, or a check that flags something that's actually fine? Open an issue: https://github.com/AndryRoby/expo-universal-links-doctor/issues, or write to support@arling.sk. Include the relevant (redacted) config, what actually happened at runtime and on which build type, and what you expected the tool to say.
 
 ## License
 
@@ -142,6 +142,6 @@ All rights reserved, see [LICENSE-NOTICE.md](LICENSE-NOTICE.md). Reading the cod
 
 ---
 
-ARLing s. r. o., Bratislava, Slovakia. andrej@arling.sk
+ARLing s. r. o., Bratislava, Slovakia. support@arling.sk
 
 Hub and sibling tools: https://arling.sk/ · https://arling.sk/google-oauth-redirect-doctor/ · https://arling.sk/expo-supabase-auth-doctor/ · https://arling.sk/supabase-redirect-doctor/ · https://arling.sk/flutter-supabase-doctor/ · https://arling.sk/sepa-pain001-doctor/ · https://arling.sk/bookapp/
