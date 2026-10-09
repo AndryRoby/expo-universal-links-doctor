@@ -138,7 +138,7 @@ Found a failure mode this tool doesn't catch, or a check that flags something th
 
 ## License
 
-All rights reserved, see [LICENSE-NOTICE.md](LICENSE-NOTICE.md). Reading the code and learning from it is fine; deploying your own copy of it as a product is not.
+MIT, see [LICENSE](LICENSE). Use it, fork it, ship it in your own projects. The ARLing name and logo are not part of the license, so please do not present a fork as an ARLing product. Bug reports and pull requests are welcome.
 
 ---
 
